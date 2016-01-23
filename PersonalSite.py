@@ -1,33 +1,41 @@
 from flask import Flask, render_template
-
-import smtplib
+from flask_mail import Mail, Message
+from forms import ContactForm
 
 app = Flask(__name__)
+app.secret_key = 'YourSuperSecreteKey'
 
+# add mail server config
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USERNAME'] = 'joeracostawebsite@gmail.com'
+app.config['MAIL_PASSWORD'] = 'joeswebsite'
+
+mail = Mail(app)
 
 @app.route('/')
 def hello_world():
-    return render_template('index.html')
+    form = ContactForm()
+    return render_template('index.html', form=form)
 
-@app.route('/contact', methods=['GET','POST'])
-def email():
-    sender = 'flatpita92@gmail.com'
-    receivers = ['joe@joeracosta.com']
+@app.route('/contact', methods=('GET','POST'))
+def contact():
+    form = ContactForm()
 
-    message = """From: From Person <from@fromdomain.com>
-    To: To Person <to@todomain.com>
-    Subject: SMTP e-mail test
+    if form.validate() == False:
+        return 'Please fill in all fields <p><a href="/contact">Try Again!!!</a></p>'
+    else:
+        msg = Message("Message from your visitor" + form.name.data,
+                      sender='YourUser@NameHere',
+                      recipients=['joe@joeracosta.com'])
+        msg.body = """
+            From: %s <%s>,
+            %s
+            """ % (form.name.data, form.email.data, form.message.data)
+        mail.send(msg)
+        return "Successfully  sent message!"
 
-    This is a test e-mail message.
-    """
-
-    try:
-        smtpObj = smtplib.SMTP('localhost', 5000)
-        smtpObj.sendmail(sender, receivers, message)
-        print "Successfully sent email"
-    except smtplib.SMTPException:
-        print "Error: unable to send email"
-    return
 
 if __name__ == '__main__':
     app.run(host='localhost')
